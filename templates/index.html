@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Please Record your Voice | IVR System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <script src="https://www.webrtc-experiment.com/RecordRTC.js"></script>
+    <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+</head>
+
+<body>
+    <button disabled id="save" class="btn btn-success ml-5" style="display: none;">Save</button>
+
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-4">
+                <div class="top-text text-center">
+                    <h5 class="red">Interactive Voice Response System</h5>
+                    <h5 class="blue">Using Deep Learning</h5>
+                </div>
+
+                <hr>
+
+                <div class="option-box mt-3 mb-4">
+                    <div class="option-top-text text-center">
+                        <span class="red bold">Please Speak Your Preferred Option</span>
+                    </div>
+
+                    <div style="padding:10px 0px 0px 20px;">
+                        <h4 class="blue bold text-center"><span class="menu-name">--- मुख्य मेनू ---</span></h4>
+                    </div>
+
+                    <div class="option-list pl-3 pr-3 mt-3">
+                        <div class="option o1">
+                            <h5 class="option-text pl-2">&nbsp; १. &nbsp; &nbsp; मोबाइल ब्यालेन्स जांच </h5>
+                        </div>
+
+                        <div class="option o2">
+                            <h5 class="option-text pl-2">&nbsp; २. &nbsp; &nbsp; डाटा प्याक </h5>
+                        </div>
+
+                        <div class="option o3">
+                            <h5 class="option-text pl-2">&nbsp; ३. &nbsp; &nbsp; भोइस प्याक</h5>
+                        </div>
+
+                        <div class="option o4">
+                            <h5 class="option-text pl-2">&nbsp; ४. &nbsp; &nbsp; हालको मिति / समय</h5>
+                        </div>
+
+                        <div class="option o5">
+                            <h5 class="option-text pl-2">&nbsp; ५. &nbsp; &nbsp; ग्राहक सेवा</h5>
+                        </div>
+
+                        <div class="option o6">
+                            <h5 class="option-text pl-2">&nbsp; ६. &nbsp; &nbsp;बाँकी डाटा/भोइस चेक</h5>
+                        </div>
+
+                        <div class="option o7">
+                            <h5 class="option-text pl-2">&nbsp; ७. &nbsp; &nbsp; ब्यालेन्स ट्रान्सफर</h5>
+                        </div>
+
+                        <div class="option o8">
+                            <h5 class="option-text pl-2">&nbsp; ८. &nbsp; &nbsp; अन्य सेवाहरू</h5>
+                        </div>
+
+                        <div class="option o9">
+                            <h5 class="option-text pl-2">&nbsp; ९. &nbsp; &nbsp; एप को बारेमा</h5>
+                        </div>
+                    </div>
+                </div>
+                <img src="{{ url_for('static', filename='images/wave.png') }}" alt="Voice Waves" style="width:100%">
+
+                <div class="mic">
+                    <button id="btn-start-recording"><img src="{{ url_for('static', filename='images/mic.png') }}"
+                            alt="Mic" class="mic-button"></button>
+                </div>
+
+                <div class="text-center" style='margin-top:8px'>
+                    <small class="text-muted mic-text">Tap the Mic to Speak</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <audio autoplay id="myaudio" style="display: none;">
+        <source src="{{ url_for('static', filename='audio/MainMenu.wav') }}" type="audio/wav">
+        Your browser does not support the audio element.
+    </audio>
+    <script>
+
+        var previous_option;
+        document.getElementById('myaudio').play();
+
+        var btnStartRecording;
+        var saveBtn;
+
+        document.getElementById('btn-start-recording').onclick = function () {
+            btnStartRecording = document.getElementById('btn-start-recording');
+            saveBtn = document.getElementById('save');
+            recordButtonClicked(btnStartRecording);
+        }
+
+        function captureMicrophone(callback) {
+            if (microphone) {
+                callback(microphone);
+                return;
+            }
+
+            if (typeof navigator.mediaDevices === 'undefined' || !navigator.mediaDevices.getUserMedia) {
+                alert('This browser does not supports WebRTC getUserMedia API.');
+
+                if (!!navigator.getUserMedia) {
+                    alert('This browser seems supporting deprecated getUserMedia API.');
+                }
+            }
+
+            navigator.mediaDevices.getUserMedia({
+                audio: isEdge ? true : {
+                    echoCancellation: false
+                }
+            }).then(function (mic) {
+                callback(mic);
+            }).catch(function (error) {
+                alert('Unable to capture your microphone. Please check console logs.');
+                console.error(error);
+            });
+        }
+
+        function stopRecordingCallback() {
+
+            // Change the mic text to processing
+            document.getElementsByClassName('mic-text')[0].innerText = 'Processing Audio';
+
+            btnStartRecording.disabled = false;
+            saveBtn.disabled = false;
+            saveBtn.click();
+        }
+
+        var isEdge = navigator.userAgent.indexOf('Edge') !== -1 && (!!navigator.msSaveOrOpenBlob || !!
+            navigator
+            .msSaveBlob);
+        var isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+        var recorder; // globally accessible
+        var microphone;
+
+        function recordButtonClicked(btnStartRecording) {
+
+            // PAuse the playing audio
+            var audio_element = document.getElementById('myaudio');
+            audio_element.pause();
+
+            // Change the mic text to listerning
+            document.getElementsByClassName('mic-text')[0].innerText = 'Listerning';
+
+            btnStartRecording.disabled = false;
+            btnStartRecording.style.border = '';
+            btnStartRecording.style.fontSize = '';
+
+            if (!microphone) {
+                captureMicrophone(function (mic) {
+                    microphone = mic;
+
+                    if (isSafari) {
+                        replaceAudio();
+
+                        audio.muted = true;
+                        audio.srcObject = microphone;
+
+                        btnStartRecording.disabled = false;
+                        btnStartRecording.style.border = '1px solid red';
+                        btnStartRecording.style.fontSize = '150%';
+
+                        alert(
+                            'Please click startRecording button again. First time we tried to access your microphone. Now we will record it.'
+                        );
+                        return;
+                    }
+
+                    click(btnStartRecording);
+                });
+                return;
+            }
+
+            var options = {
+                type: 'audio',
+                numberOfAudioChannels: isEdge ? 1 : 2,
+                checkForInactiveTracks: true,
+                bufferSize: 16384
+            };
+
+            if (isSafari || isEdge) {
+                options.recorderType = StereoAudioRecorder;
+            }
+
+            if (navigator.platform && navigator.platform.toString().toLowerCase().indexOf('win') === -
+                1) {
+                options.sampleRate = 48000; // or 44100 or remove this line for default
+            }
+
+            if (isSafari) {
+                options.sampleRate = 44100;
+                options.bufferSize = 4096;
+                options.numberOfAudioChannels = 2;
+            }
+
+            if (recorder) {
+                recorder.destroy();
+                recorder = null;
+            }
+
+            recorder = RecordRTC(microphone, options);
+            recorder.setRecordingDuration(1000).onRecordingStopped(stopRecordingCallback);
+            recorder.startRecording();
+        };
+
+        function click(el) {
+            el.disabled = false; // make sure that element is not disabled
+            var evt = document.createEvent('Event');
+            evt.initEvent('click', true, true);
+            el.dispatchEvent(evt);
+        }
+
+        function getRandomString() {
+            if (window.crypto && window.crypto.getRandomValues && navigator.userAgent.indexOf('Safari') ===
+                -
+                1) {
+                var a = window.crypto.getRandomValues(new Uint32Array(3)),
+                    token = '';
+                for (var i = 0, l = a.length; i < l; i++) {
+                    token += a[i].toString(36);
+                }
+                return token;
+            } else {
+                return (Math.random() * new Date().getTime()).toString(36).replace(/\./g, '');
+            }
+        }
+
+        function getFileName(fileExtension) {
+            var d = new Date();
+            var year = d.getFullYear();
+            var month = d.getMonth();
+            var date = d.getDate();
+            return 'RecordRTC-' + year + month + date + '-' + getRandomString() + '.' + fileExtension;
+        }
+
+        document.getElementById('save').onclick = function () {
+            saveButtonClicked();
+        }
+
+        function saveButtonClicked() {
+
+            // get recorded blob
+            var blob = recorder.getBlob();
+
+            // generating a random file name
+            var fileName = getFileName('wav');
+
+            // we need to upload "File" --- not "Blob"
+            var fileObject = new File([blob], fileName, {
+                type: 'audio/webm'
+            });
+
+            var formData = new FormData();
+
+            // recorded data
+            formData.append('audio-blob', fileObject);
+
+            // file name
+            formData.append('audio-filename', fileObject.name);
+
+            var upload_url = 'https://192.168.0.101:5000/voice';
+
+            var upload_directory = upload_url;
+            // var upload_directory = 'RecordRTC-to-PHP/uploads/';
+
+            // upload using jQuery
+            $.ajax({
+                url: upload_url,
+                data: formData,
+                cache: false,
+                contentType: false,
+                processData: false,
+                type: 'POST',
+                success: function (response) {
+                    if (response.status === 'success') {
+
+                        var selected_element = document.getElementsByClassName('o' + response.selected_option);
+
+                        // Make Selected Element Blue
+                        if( selected_element[0]){
+                            selected_element[0].classList.remove("option");
+                            selected_element[0].classList.add("option-selected");
+                        }
+
+                        // Speak Out the Selected Option
+                        var audio_element = document.getElementById('myaudio');
+                        audio_element.src = 'static/audio/Sel_' + response.selected_option + '.wav';
+                        audio_element.load();
+                        audio_element.play();
+
+                        // Change the mic text to tap to speak
+                        document.getElementsByClassName('mic-text')[0].innerText = 'Done. Tap The Mic to Speak Again';
+
+                        setTimeout(function () {
+
+                            var new_option;
+
+                            if(previous_option){
+                                new_option = parseFloat("" + previous_option + "." + response.selected_option);
+                                console.log('PP : Current Option = ' + new_option + '  Type = ' + typeof new_option);
+                            }
+                            else{
+                                new_option = response.selected_option;
+                                console.log('PnP : Current Option = ' + new_option + '  Type = ' + typeof new_option);
+                            }
+
+
+                            //Determine Which option is selected and Change the menu options according to selected option
+                            switch (new_option) {
+
+                                // Option 1 : Balence Menu
+                                case 1:
+
+                                    document.getElementsByClassName('menu-name')[0].innerText = "--- ब्यालेन्स जांच मेनू---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/1_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<div class="option o1"> <h5 class="option-text pl-2">&nbsp; १. &nbsp; &nbsp;  मुख्य ब्यालेन्स</h5></div>' +
+                                        '<div class="option o2"> <h5 class="option-text pl-2">&nbsp; २. &nbsp; &nbsp;  बोनस ब्यालेन्स</h5></div>' +
+                                        '<div class="option o3"> <h5 class="option-text pl-2">&nbsp; ३. &nbsp; &nbsp;  ब्यालेन्स मान्यता अवधि</h5></div>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Sub Option : Main Balence 1_1
+                                case 1.1:
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/1_1_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options = '<div class="text-center"><b class="red"> Current Main Balence = Rs. 110 </b></div>';
+                                    option_container.innerHTML = new_options;
+
+                                    break;
+
+                                // Sub Option : Bonus Balence 1_2
+                                case 1.2:
+                                // Play Option Specific Sound
+                                var audio_element = document.getElementById('myaudio');
+                                audio_element.src = 'static/audio/1_2_OP.wav';
+                                audio_element.load();
+                                audio_element.play();
+
+                                var option_container = document.getElementsByClassName('option-list')[0];
+
+                                while (option_container.firstChild) {
+                                    option_container.removeChild(option_container.firstChild);
+                                }
+
+                                var new_options = '<div class="text-center"><b class="red"> Current Bonus Balence = Rs. 150 </b></div>';
+                                option_container.innerHTML = new_options;
+
+                                break;
+
+                                // Sub Option : Bonus Validity 1_3
+                                case 1.3:
+                                // Play Option Specific Sound
+                                var audio_element = document.getElementById('myaudio');
+                                audio_element.src = 'static/audio/1_3_OP.wav';
+                                audio_element.load();
+                                audio_element.play();
+
+                                var option_container = document.getElementsByClassName('option-list')[0];
+
+                                while (option_container.firstChild) {
+                                    option_container.removeChild(option_container.firstChild);
+                                }
+
+                                var new_options = '<b class="red text-center"> Balence Validity = 2020 November 20. </b>';
+                                option_container.innerHTML = new_options;
+
+                                break;
+
+
+                                // Option 2 : Data Packs
+                                case 2:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "--- डाटा प्याक मेनू ---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/2_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<div class="option o1"> <h5 class="option-text pl-2">&nbsp; १. &nbsp; &nbsp;  १०० MB रु १० मा</h5></div>' +
+                                        '<div class="option o2"> <h5 class="option-text pl-2">&nbsp; २. &nbsp; &nbsp;  २ GB रु २०० मा</h5></div>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Sub Option : 100MB  2_1
+                                case 2.1:
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/2_1_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options = '<b class="red text-center"> Success ! 100 MB Purchased for Rs. 10 </b>';
+                                    option_container.innerHTML = new_options;
+
+                                    break;
+                                
+                                // Sub Option : 2GB  2_2
+                                case 2.2:
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/2_2_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options = '<b class="red text-center"> Success ! 2 GB Purchased for Rs. 200 </b>';
+                                    option_container.innerHTML = new_options;
+
+                                    break;
+
+                                // Option 3 : Voice Packs
+                                case 3:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "---  भोइस प्याक मेनू ---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/CustomerMenu.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<div class="option o1"> <h5 class="option-text pl-2">&nbsp; १. &nbsp; &nbsp;  १०० मिनेट रु १० मा</h5></div>' +
+                                        '<div class="option o2"> <h5 class="option-text pl-2">&nbsp; २. &nbsp; &nbsp;  १ घण्टा रु २०० मा</h5></div>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Sub Option : 100 Minute 3_1
+                                case 3.1:
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/3_1_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options = '<b class="red text-center"> Success ! 100 Minutes Voice Pack Purchased for Rs. 10 </b>';
+                                    option_container.innerHTML = new_options;
+
+                                    break;
+                                
+                                // Sub Option : 1 Hour  3_2
+                                case 3.2:
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/3_2_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options = '<b class="red text-center"> Success ! 1 Hour Voice Pack Purchased for Rs. 200 </b>';
+                                    option_container.innerHTML = new_options;
+
+                                    break;
+
+                                // Option 4 :Date / Time
+                                case 4:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "-- हालको मिति / समय --";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/4_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<h4 class="red text-center"> मिति: २०७६ मंग्सिर ११, बुधवार ||| ११ : २० AM </h4>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                    break;
+
+
+                                // Option 5 : Customer Care
+                                case 5:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "---  ग्राहक सेवा मेनू  ---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/5_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<div class="option o1"> <h5 class="option-text pl-2">&nbsp; १. &nbsp; &nbsp;  ग्राहक सेवा प्रतिनिधि सित कुरागर्नु</h5></div>' +
+                                        '<div class="option o2"> <h5 class="option-text pl-2">&nbsp; २. &nbsp; &nbsp;  प्राय: सोधिने प्रश्नको उत्तर</h5></div>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Sub Option : Talk to Customer Care 5_1
+                                case 5.1:
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/5_1_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options = '<b class="red text-center"> You are now talking to Customer Care Representative </b>';
+                                    option_container.innerHTML = new_options;
+
+                                    break;
+                                
+                                // Sub Option : FAQ 5_2
+                                case 5.2:
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/5_2_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options = '<b class="red text-center"> 1. What does this app Do? <br> Ans: This app takes Nepali Voice digits as input and Performs actions accordingly. </b>';
+                                    option_container.innerHTML = new_options;
+
+                                    break;
+
+                                // Option 6 : Remaining Data/Voice
+                                case 6:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "---  बाँकी डाटा/भोइस मेनू  ---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/6_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<div class="option o1"> <h5 class="option-text pl-2">&nbsp; १. &nbsp; &nbsp;  बाँकी डाटा</h5></div>' +
+                                        '<div class="option o2"> <h5 class="option-text pl-2">&nbsp; २. &nbsp; &nbsp;  बाँकी भोइस</h5></div>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Sub Option : Remaining Voice 6_1
+                                case 6.1:
+                                    document.getElementsByClassName('menu-name')[0].innerHtml = "<h3>बाँकी डाटा : १२ MB</h3>";
+
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/6_1_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    break;
+                                
+                                // Sub Option : Remaining Data 6_2
+                                case 6.2:
+                                    document.getElementsByClassName('menu-name')[0].innerHtml = "<h3>बाँकी भोइस : २० मिनेट</h3>";
+
+                                    // Play Option Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/6_2_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    break;
+                                    
+                                // Option 7 : Balence Transfer
+                                case 7:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "---  ब्यालेन्स ट्रान्सफर मेनू  ---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/7_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<input name="balence_transfer" class="form-control" placeholder="Mobile Number">'+
+                                        '<button class="btn btn-info">Transfer</button>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Option 8 : Other Services
+                                case 8:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "---  अन्य सेवाहरू  ---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/8_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<div class="option o1"> <h5 class="option-text pl-2">&nbsp; १. &nbsp; &nbsp;  Other Service 1</h5></div>' +
+                                        '<div class="option o2"> <h5 class="option-text pl-2">&nbsp; २. &nbsp; &nbsp;  Other Service 2</h5></div>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Option 8 : About the App
+                                case 9:
+                                    document.getElementsByClassName('menu-name')[0].innerText = "---  एप को बारेमा  ---";
+
+                                    // Play Sub Menu Specific Sound
+                                    var audio_element = document.getElementById('myaudio');
+                                    audio_element.src = 'static/audio/9_OP.wav';
+                                    audio_element.load();
+                                    audio_element.play();
+
+                                    var option_container = document.getElementsByClassName('option-list')[0];
+
+                                    while (option_container.firstChild) {
+                                        option_container.removeChild(option_container.firstChild);
+                                    }
+
+                                    var new_options =
+                                        '<div class="card-body text-center">This is a IVR App</div>';
+
+                                    option_container.innerHTML = new_options;
+                                    break;
+
+                                // Invalid Option 
+                                default:
+                                    console.log('Invalid Option');
+                            }
+                            previous_option = response.selected_option;
+
+                        }, 4000);
+
+                    } else {
+                        alert('A failure Occured');
+                        console.log(response);
+                    }
+                }
+            });
+        }
+    </script>
+
+    <script src="https://www.webrtc-experiment.com/common.js"></script>
+</body>
+
+</html>
